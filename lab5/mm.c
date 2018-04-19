@@ -1,7 +1,7 @@
-/*-------------------------------------------------------------------                             
- * Lab 5 Starter code:                                                                            
- *        single doubly-linked free block list with LIFO policy                                   
- *        with support for coalescing adjacent free blocks  
+/*-------------------------------------------------------------------
+ * Lab 5 Starter code:
+ *        single doubly-linked free block list with LIFO policy
+ *        with support for coalescing adjacent free blocks
  *
  * Terminology:
  * o We will implement an explicit free list allocator
@@ -19,12 +19,12 @@
 #include "memlib.h"
 #include "mm.h"
 
-/* Macros for unscaled pointer arithmetic to keep other code cleaner.  
+/* Macros for unscaled pointer arithmetic to keep other code cleaner.
    Casting to a char* has the effect that pointer arithmetic happens at
    the byte granularity (i.e. POINTER_ADD(0x1, 1) would be 0x2).  (By
    default, incrementing a pointer in C has the effect of incrementing
    it by the size of the type to which it points (e.g. BlockInfo).)
-   We cast the result to void* to force you to cast back to the 
+   We cast the result to void* to force you to cast back to the
    appropriate type and ensure you don't accidentally use the resulting
    pointer as a char* implicitly.  You are welcome to implement your
    own pointer arithmetic instead of using these macros.
@@ -40,7 +40,7 @@
    and usage tags, as well as pointers to the next and previous blocks
    in the free list.  This is exactly the "explicit free list" structure
    illustrated in the lecture slides.
-   
+
    Note that the next and prev pointers and the boundary tag are only
    needed when the block is free.  To achieve better utilization, mm_malloc
    should use the space for next and prev as part of the space it returns.
@@ -75,8 +75,8 @@ struct BlockInfo {
 typedef struct BlockInfo BlockInfo;
 
 
-/* Pointer to the first BlockInfo in the free list, the list's head. 
-   
+/* Pointer to the first BlockInfo in the free list, the list's head.
+
    A pointer to the head of the free list in this implementation is
    always stored in the first word in the heap.  mem_heap_lo() returns
    a pointer to the first word in the heap, so we cast the result of
@@ -99,7 +99,7 @@ typedef struct BlockInfo BlockInfo;
    Also, calling SIZE(size) selects just the higher bits of 'size' to ensure
    that 'size' is properly aligned.  We align 'size' so we can use the low
    bits of the sizeAndTags field to tag a block as free/used, etc, like this:
-   
+
       sizeAndTags:
       +-------------------------------------------+
       | 63 | 62 | 61 | 60 |  . . . .  | 2 | 1 | 0 |
@@ -116,7 +116,7 @@ typedef struct BlockInfo BlockInfo;
 #define SIZE(x) ((x) & ~(ALIGNMENT - 1))
 
 /* TAG_USED is the bit mask used in sizeAndTags to mark a block as used. */
-#define TAG_USED 1 
+#define TAG_USED 1
 
 /* TAG_PRECEDING_USED is the bit mask used in sizeAndTags to indicate
    that the block preceding it in memory is used. (used in turn for
@@ -127,7 +127,7 @@ typedef struct BlockInfo BlockInfo;
 
 /* Find a free block of the requested size in the free list.  Returns
    NULL if no free block is large enough. */
-static void * searchFreeList(size_t reqSize) {   
+static void * searchFreeList(size_t reqSize) {
   BlockInfo* freeBlock;
 
   freeBlock = FREE_LIST_HEAD;
@@ -140,7 +140,7 @@ static void * searchFreeList(size_t reqSize) {
   }
   return NULL;
 }
-           
+
 /* Insert freeBlock at the head of the list.  (LIFO) */
 static void insertFreeBlock(BlockInfo* freeBlock) {
   BlockInfo* oldHead = FREE_LIST_HEAD;
@@ -150,12 +150,12 @@ static void insertFreeBlock(BlockInfo* freeBlock) {
   }
   //  freeBlock->prev = NULL;
   FREE_LIST_HEAD = freeBlock;
-}      
+}
 
 /* Remove a free block from the free list. */
 static void removeFreeBlock(BlockInfo* freeBlock) {
   BlockInfo *nextFree, *prevFree;
-  
+
   nextFree = freeBlock->next;
   prevFree = freeBlock->prev;
 
@@ -185,7 +185,7 @@ static void coalesceFreeBlock(BlockInfo* oldBlock) {
 
   // Coalesce with any preceding free block
   blockCursor = oldBlock;
-  while ((blockCursor->sizeAndTags & TAG_PRECEDING_USED)==0) { 
+  while ((blockCursor->sizeAndTags & TAG_PRECEDING_USED)==0) {
     // While the block preceding this one in memory (not the
     // prev. block in the free list) is free:
 
@@ -215,7 +215,7 @@ static void coalesceFreeBlock(BlockInfo* oldBlock) {
     newSize += size;
     blockCursor = (BlockInfo*)UNSCALED_POINTER_ADD(blockCursor, size);
   }
-  
+
   // If the block actually grew, remove the old entry from the free
   // list and add the new entry.
   if (newSize != oldSize) {
@@ -228,7 +228,7 @@ static void coalesceFreeBlock(BlockInfo* oldBlock) {
     newBlock->sizeAndTags = newSize | TAG_PRECEDING_USED;
     // The boundary tag of the preceding block is the word immediately
     // preceding block in memory where we left off advancing blockCursor.
-    *(size_t*)UNSCALED_POINTER_SUB(blockCursor, WORD_SIZE) = newSize | TAG_PRECEDING_USED;  
+    *(size_t*)UNSCALED_POINTER_SUB(blockCursor, WORD_SIZE) = newSize | TAG_PRECEDING_USED;
 
     // Put the new block in the free list.
     insertFreeBlock(newBlock);
@@ -257,7 +257,7 @@ static void requestMoreSpace(size_t reqSize) {
   prevLastWordMask = newBlock->sizeAndTags & TAG_PRECEDING_USED;
   newBlock->sizeAndTags = totalSize | prevLastWordMask;
   // Initialize boundary tag.
-  ((BlockInfo*)UNSCALED_POINTER_ADD(newBlock, totalSize - WORD_SIZE))->sizeAndTags = 
+  ((BlockInfo*)UNSCALED_POINTER_ADD(newBlock, totalSize - WORD_SIZE))->sizeAndTags =
     totalSize | prevLastWordMask;
 
   /* initialize "new" useless last word
@@ -319,7 +319,7 @@ int mm_init () {
   void* mem_sbrk_result = mem_sbrk(initSize);
   //  printf("mem_sbrk returned %p\n", mem_sbrk_result);
   if ((ssize_t)mem_sbrk_result == -1) {
-    printf("ERROR: mem_sbrk failed in mm_init, returning %p\n", 
+    printf("ERROR: mem_sbrk failed in mm_init, returning %p\n",
            mem_sbrk_result);
     exit(1);
   }
@@ -339,7 +339,7 @@ int mm_init () {
   firstFreeBlock->prev = NULL;
   // boundary tag
   *((size_t*)UNSCALED_POINTER_ADD(firstFreeBlock, totalSize - WORD_SIZE)) = totalSize | TAG_PRECEDING_USED;
-  
+
   // Tag "useless" word at end of heap as used.
   // This is the is the heap-footer.
   *((size_t*)UNSCALED_POINTER_SUB(mem_heap_hi(), WORD_SIZE - 1)) = TAG_USED;
@@ -380,8 +380,14 @@ void* mm_malloc (size_t size) {
 
   // Implement mm_malloc.  You can change or remove any of the above
   // code.  It is included as a suggestion of where to start.
+
+  ptrFreeBlock = searchFreeList(reqSize);
+  // FREE_LIST_HEAD;
+  removeFreeBlock(ptrFreeBlock);
+  examine_heap();
+
   // You will want to replace this return statement...
-  return NULL; 
+  return NULL;
 }
 
 /* Free the block referenced by ptr. */
