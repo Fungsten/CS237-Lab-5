@@ -380,11 +380,18 @@ void* mm_malloc (size_t size) {
 
   // Implement mm_malloc.  You can change or remove any of the above
   // code.  It is included as a suggestion of where to start.
-
-  ptrFreeBlock = searchFreeList(reqSize);
   // FREE_LIST_HEAD;
-  removeFreeBlock(ptrFreeBlock);
-  examine_heap();
+  ptrFreeBlock = searchFreeList(reqSize); // finds a free block of the required size
+  // if did not find enough space
+  if (ptrFreeBlock = NULL) {
+    requestMoreSpace(reqSize);
+    ptrFreeBlock = searchFreeList(reqSize);
+  }
+
+  removeFreeBlock(ptrFreeBlock); // makes the block no longer free
+  examine_heap(); // what
+  // set previous block's next used tag to 1
+  // set next block's previous used tag to 1
 
   // You will want to replace this return statement...
   return NULL;
@@ -398,12 +405,18 @@ void mm_free (void *ptr) {
 
   // Implement mm_free.  You can change or remove the declaraions
   // above.  They are included as minor hints.
-
+  // Set previous block's next used parameter to 0
+  // Set next block's previous used parameter to 0
+  // Will want to set 'used' flag to '0' and coalesce forward and backward (if applicable)
+  // oh, coalesce does both
+  coalesceFreeBlock(ptr);
 }
 
 
 // Implement a heap consistency checker as needed.
 int mm_check() {
+  //  idk dude
+  examine_heap();
   return 0;
 }
 
