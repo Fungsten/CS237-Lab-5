@@ -355,6 +355,7 @@ int mm_init () {
 
 /* Allocate a block of size size and return a pointer to it. */
 void* mm_malloc (size_t size) {
+  printf("Starting mm_malloc\n");
   size_t reqSize;
   BlockInfo * ptrFreeBlock = NULL;
   size_t blockSize;
@@ -378,35 +379,64 @@ void* mm_malloc (size_t size) {
     reqSize = ALIGNMENT * ((size + ALIGNMENT - 1) / ALIGNMENT);
   }
 
+
+
   // Implement mm_malloc.  You can change or remove any of the above
   // code.  It is included as a suggestion of where to start.
   // FREE_LIST_HEAD;
+  printf("Looking for free block\n");
   ptrFreeBlock = searchFreeList(reqSize); // finds a free block of the required size
   // if did not find enough space
-  if (ptrFreeBlock = NULL) {
+  if (ptrFreeBlock == NULL) {
+    printf("Requesting more space\n");
     requestMoreSpace(reqSize);
+    printf("seg fault here\n");
     ptrFreeBlock = searchFreeList(reqSize);
   }
 
+  // need to split?
+  printf("Checking free block size\n");
+  BlockInfo *ptrNextBlock = UNSCALED_POINTER_ADD(ptrFreeBlock, reqSize);
+  if (SIZE((*ptrFreeBlock).sizeAndTags) - reqSize >= MIN_BLOCK_SIZE) {
+    // blockSize = 7;
+    printf("Want to split\n");
+    // use ptr arithmetic to get to header of next
+    (*ptrNextBlock).sizeAndTags = (SIZE((*ptrFreeBlock).sizeAndTags) - reqSize) | TAG_PRECEDING_USED;
+    insertFreeBlock(ptrNextBlock);
+  } else {
+    (*ptrNextBlock).sizeAndTags = (SIZE((*ptrFreeBlock).sizeAndTags) - reqSize) | TAG_PRECEDING_USED;
+    blockSize = reqSize;
+    // (*ptrFreeBlock).sizeAndTags = (*ptrFreeBlock).sizeAndTags | 1;
+  }
+
+
+
+  printf("setting tag to used\n");
+  (*ptrFreeBlock).sizeAndTags = (*ptrFreeBlock).sizeAndTags | TAG_USED;
+
+  // blockSize = reqSize;
+  // (*ptrFreeBlock).sizeAndTags = blockSize;
+
+  printf("removing free block\n");
   removeFreeBlock(ptrFreeBlock); // makes the block no longer free
-  examine_heap(); // what
-  // set previous block's next used tag to 1
-  // set next block's previous used tag to 1
 
   // You will want to replace this return statement...
-  return NULL;
+  return ptrFreeBlock;
 }
 
 /* Free the block referenced by ptr. */
 void mm_free (void *ptr) {
+  printf("Starting mm_free\n");
   size_t payloadSize;
   BlockInfo * blockInfo;
   BlockInfo * followingBlock;
 
   // Implement mm_free.  You can change or remove the declaraions
   // above.  They are included as minor hints.
-  // Set previous block's next used parameter to 0
+  // Add newly freed block to top of list of free blocks
+  insertFreeBlock(ptr);
   // Set next block's previous used parameter to 0
+  followingBlock = UNSCALED_POINTER_ADD(blockInfo, (*blockInfo).sizeAndTags);
   // Will want to set 'used' flag to '0' and coalesce forward and backward (if applicable)
   // oh, coalesce does both
   coalesceFreeBlock(ptr);
