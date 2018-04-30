@@ -379,8 +379,6 @@ void* mm_malloc (size_t size) {
     reqSize = ALIGNMENT * ((size + ALIGNMENT - 1) / ALIGNMENT);
   }
 
-
-
   // Implement mm_malloc.  You can change or remove any of the above
   // code.  It is included as a suggestion of where to start.
   // FREE_LIST_HEAD;
@@ -388,37 +386,49 @@ void* mm_malloc (size_t size) {
   ptrFreeBlock = searchFreeList(reqSize); // finds a free block of the required size
   // if did not find enough space
   if (ptrFreeBlock == NULL) {
+    //requesting for more space
     printf("Requesting more space\n");
     requestMoreSpace(reqSize);
     printf("seg fault here\n");
     ptrFreeBlock = searchFreeList(reqSize);
   }
 
+  blockSize = SIZE((*ptrFreeBlock).sizeAndTags);
+
   // need to split?
   printf("Checking free block size\n");
-  BlockInfo *ptrNextBlock = UNSCALED_POINTER_ADD(ptrFreeBlock, reqSize);
-  if (SIZE((*ptrFreeBlock).sizeAndTags) - reqSize >= MIN_BLOCK_SIZE) {
-    // blockSize = 7;
+
+  BlockInfo *ptrNextBlock;
+  if (blockSize - reqSize >= MIN_BLOCK_SIZE) {
+    //split the block, Into blocks A and B, for block A we need to remove from the freelist, and then update its headers
+    //for B we need to create a header and a footer and then add it to the free list
     printf("Want to split\n");
+
+    //Dealing with block A
+    (*ptrFreeBlock).sizeAndTags = reqSize; //sets this block to the new size
+
     // use ptr arithmetic to get to header of next
-    (*ptrNextBlock).sizeAndTags = (SIZE((*ptrFreeBlock).sizeAndTags) - reqSize) | TAG_PRECEDING_USED;
+    ptrNextBlock = UNSCALED_POINTER_ADD(ptrFreeBlock, reqSize);
+    (*ptrNextBlock).sizeAndTags = (blockSize - reqSize) | TAG_PRECEDING_USED; //sets the new size and tags to this size
+    size_t * ptrFoot = UNSCALED_POINTER_ADD(ptrNextBlock, blockSize - reqSize);
+    ptrFoot = UNSCALED_POINTER_SUB(ptrFoot, WORD_SIZE);
+    (*ptrFoot) = (*ptrNextBlock).sizeAndTags;
     insertFreeBlock(ptrNextBlock);
+    // removeFreeBlock(ptrFreeBlock); // makes the block no longer free
+
   } else {
-    (*ptrNextBlock).sizeAndTags = (SIZE((*ptrFreeBlock).sizeAndTags) - reqSize) | TAG_PRECEDING_USED;
-    blockSize = reqSize;
-    // (*ptrFreeBlock).sizeAndTags = (*ptrFreeBlock).sizeAndTags | 1;
+    //We need to remove the block from the FREE_LIST_HEAD
+    //we need to update the block headers and also update the adjacent block headers that say that the next block is not empty
+    printf("No need to split\n");
+    ptrNextBlock = UNSCALED_POINTER_ADD(ptrFreeBlock, blockSize);//finds the next block
+    removeFreeBlock(ptrFreeBlock); // makes the block no longer free
+    (*ptrFreeBlock).sizeAndTags = (*ptrFreeBlock).sizeAndTags | TAG_USED;
+    (*ptrNextBlock).sizeAndTags = (*ptrNextBlock).sizeAndTags | TAG_PRECEDING_USED;
+    //this is to update the current block saying that the precdeing block is in TAG_USED
+
   }
 
-
-
-  printf("setting tag to used\n");
-  (*ptrFreeBlock).sizeAndTags = (*ptrFreeBlock).sizeAndTags | TAG_USED;
-
-  // blockSize = reqSize;
-  // (*ptrFreeBlock).sizeAndTags = blockSize;
-
-  printf("removing free block\n");
-  removeFreeBlock(ptrFreeBlock); // makes the block no longer free
+  examine_heap();
 
   // You will want to replace this return statement...
   return ptrFreeBlock;
@@ -430,15 +440,36 @@ void mm_free (void *ptr) {
   size_t payloadSize;
   BlockInfo * blockInfo;
   BlockInfo * followingBlock;
+  // BlockInfo * prevBlock;
 
   // Implement mm_free.  You can change or remove the declaraions
   // above.  They are included as minor hints.
   // Add newly freed block to top of list of free blocks
-  insertFreeBlock(ptr);
+
+
+  // Need to find the blockInfo;
+  blockInfo = ptr;
+  printf("changing tags\n");
+  (*blockInfo).sizeAndTags = (*blockInfo).sizeAndTags ^ TAG_USED; // set used tag to zero
+  payloadSize = SIZE((*blockInfo).sizeAndTags) - 2*WORD_SIZE;
+  // making the footer
+  size_t *ptrFoot = UNSCALED_POINTER_ADD(ptr, payloadSize + WORD_SIZE);
+  (*ptrFoot) = (*blockInfo).sizeAndTags;
+
+  printf("inserting free block\n");
+  insertFreeBlock(blockInfo);
+
+  printf("changing next tags\n");
   // Set next block's previous used parameter to 0
-  followingBlock = UNSCALED_POINTER_ADD(blockInfo, (*blockInfo).sizeAndTags);
-  // Will want to set 'used' flag to '0' and coalesce forward and backward (if applicable)
-  // oh, coalesce does both
+  followingBlock = UNSCALED_POINTER_ADD(ptrFoot, WORD_SIZE);
+  (*followingBlock).sizeAndTags = (*followingBlock).sizeAndTags ^ TAG_USED;
+
+  // //  Set previous block's next used parameter to 0
+  // prevBlock = UNSCALED_POINTER_SUB(blockInfo, WORD_SIZE);
+  // (*prevBlock).sizeAndTags = (*prevBlock).sizeAndTags ^ TAG_USED;
+
+  // after done setting tags, coalesce back and forth
+  printf("coalescing\n");
   coalesceFreeBlock(ptr);
 }
 
