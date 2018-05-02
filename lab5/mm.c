@@ -363,7 +363,7 @@ void* mm_malloc (size_t size) {
   size_t reqSize;
   BlockInfo * ptrFreeBlock = NULL;
   size_t blockSize;
-  size_t precedingBlockUseTag;
+  // size_t precedingBlockUseTag;
 
   // Zero-size requests get NULL.
   if (size == 0) {
@@ -474,13 +474,6 @@ void mm_free (void *ptr) {
 
 
   insertFreeBlock(blockInfo);
-
-  // //  Set previous block's next used parameter to 0
-  // prevBlock = UNSCALED_POINTER_SUB(blockInfo, WORD_SIZE);
-  // (*prevBlock).sizeAndTags = (*prevBlock).sizeAndTags ^ TAG_USED;
-  // examine_heap();
-  // after done setting tags, coalesce back and forth
-  // printf("coalescing\n");
   coalesceFreeBlock(blockInfo);
 }
 
